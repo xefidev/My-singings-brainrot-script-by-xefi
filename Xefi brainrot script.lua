@@ -149,12 +149,12 @@ local function collectCoins()
     if isAutoCollect then
         local coinsFolder = nil
         for _, child in pairs(game.Workspace:GetChildren()) do
-            if string.find(child.Name:lower(), "coin") then
+            if string.find(child.Name:lower(), "coin") or string.find(child.Name:lower(), "collect") then
                 coinsFolder = child
                 break
             end
         end
-        if coinsFolder and coinsFolder:IsA("Folder") or coinsFolder:IsA("Model") then
+        if coinsFolder and (coinsFolder:IsA("Folder") or coinsFolder:IsA("Model")) then
             for _, coin in pairs(coinsFolder:GetChildren()) do
                 if coin:IsA("BasePart") then
                     local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -166,7 +166,7 @@ local function collectCoins()
                 end
             end
         else
-            print("Warning: No coins folder found. Check Workspace for 'coin' in name.")
+            print("Warning: No coins folder found. Check Workspace for 'coin' or 'collect' in name.")
         end
     end
 end
@@ -175,7 +175,7 @@ local function buyEggs()
     if isAutoBuyEggs then
         local shopFolder = nil
         for _, child in pairs(game.Workspace:GetChildren()) do
-            if string.find(child.Name:lower(), "shop") or string.find(child.Name:lower(), "egg") then
+            if string.find(child.Name:lower(), "shop") or string.find(child.Name:lower(), "eggconveyor") then
                 shopFolder = child
                 break
             end
@@ -188,7 +188,7 @@ local function buyEggs()
                 print("Warning: Egg '" .. selectedEgg .. "' or its ClickDetector not found in " .. shopFolder.Name)
             end
         else
-            print("Warning: No shop folder found. Check Workspace for 'shop' or 'egg' in name.")
+            print("Warning: No shop folder found. Check Workspace for 'shop' or 'eggconveyor' in name.")
         end
     end
 end
@@ -200,14 +200,14 @@ local function hatchEggs()
         if egg then
             local remoteEvents = game:GetService("ReplicatedStorage"):FindFirstChild("RemoteEvents")
             if remoteEvents then
-                local hatchEvent = remoteEvents:FindFirstChild("HatchEgg")
+                local hatchEvent = remoteEvents:FindFirstChild("HatchEvent") or remoteEvents:FindFirstChild("HatchEgg")
                 if hatchEvent then
                     local success, err = pcall(function()
                         hatchEvent:FireServer(egg)
                     end)
                     if not success then print("Error hatching egg: " .. err) end
                 else
-                    print("Warning: HatchEgg event not found in RemoteEvents.")
+                    print("Warning: HatchEvent or HatchEgg not found in RemoteEvents.")
                 end
             else
                 print("Warning: RemoteEvents not found in ReplicatedStorage.")
@@ -224,7 +224,7 @@ local function expandTerritory()
     if isAutoExpand then
         local territoryShop = nil
         for _, child in pairs(game.Workspace:GetChildren()) do
-            if string.find(child.Name:lower(), "territory") or string.find(child.Name:lower(), "land") then
+            if string.find(child.Name:lower(), "territory") or string.find(child.Name:lower(), "land") or string.find(child.Name:lower(), "upgrade") then
                 territoryShop = child
                 break
             end
@@ -238,7 +238,7 @@ local function expandTerritory()
                 print("Warning: Upgrade '" .. territoryLevels[currentLevel] .. "' or its ClickDetector not found.")
             end
         else
-            print("Warning: No territory shop found. Check Workspace for 'territory' or 'land' in name.")
+            print("Warning: No territory shop found. Check Workspace for 'territory', 'land', or 'upgrade' in name.")
         end
     end
 end
