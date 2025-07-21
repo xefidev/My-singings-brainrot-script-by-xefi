@@ -1,6 +1,7 @@
--- XefiHubBrainrotV4 для Grow a Garden (PlaceId: 126884695634066)
+-- XefiHubBrainrotV5 для Grow a Garden (PlaceId: 126884695634066)
 -- Функции: Auto Buy, Auto Plant, Auto Harvest, Auto Sell, Speed
--- Простое меню, без фризов, огород не пропадает
+-- Красивое меню с анимацией и выпадающим списком растений
+-- Безопасный код, без фризов, огород не пропадает
 -- Discord: sahadowgame0.0
 
 -- Сервисы
@@ -27,12 +28,12 @@ end
 
 -- Цвета
 local colors = {
-    background = Color3.fromRGB(40, 40, 45),
-    button = Color3.fromRGB(70, 70, 80),
-    buttonOn = Color3.fromRGB(0, 255, 0),
+    background = Color3.fromRGB(30, 30, 35),
+    button = Color3.fromRGB(50, 50, 60),
+    buttonOn = Color3.fromRGB(0, 200, 0),
     text = Color3.fromRGB(255, 255, 255),
-    error = Color3.fromRGB(255, 80, 80),
-    success = Color3.fromRGB(0, 255, 0)
+    error = Color3.fromRGB(200, 0, 0),
+    success = Color3.fromRGB(0, 200, 0)
 }
 
 -- Уведомления
@@ -44,7 +45,7 @@ local function showNotification(text, color)
     notification.BackgroundColor3 = colors.background
     notification.BackgroundTransparency = 0.3
     notification.Parent = game:GetService("CoreGui")
-    notification.ZIndex = 2000
+    notification.ZIndex = 3000
 
     local uiCorner = Instance.new("UICorner")
     uiCorner.CornerRadius = UDim.new(0, 6)
@@ -60,7 +61,7 @@ local function showNotification(text, color)
     textLabel.Font = Enum.Font.Gotham
     textLabel.TextWrapped = true
     textLabel.Parent = notification
-    textLabel.ZIndex = 2001
+    textLabel.ZIndex = 3001
 
     TweenService:Create(notification, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
     task.wait(2)
@@ -74,7 +75,7 @@ end
 local function createButtonEffect(button)
     local originalColor = button.BackgroundColor3
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(90, 90, 100)}):Play()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 80)}):Play()
     end)
     button.MouseLeave:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
@@ -106,50 +107,111 @@ end
 
 -- UI
 local gui = Instance.new("ScreenGui")
-gui.Name = "XefiHubV4"
+gui.Name = "XefiHubV5"
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.ResetOnSpawn = false
 gui.Parent = game:GetService("CoreGui")
 
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 180, 0, 200)
+mainFrame.Size = UDim2.new(0, 200, 0, 250)
 mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 mainFrame.BackgroundColor3 = colors.background
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.Visible = false
 mainFrame.Parent = gui
-mainFrame.ZIndex = 2000
+mainFrame.ZIndex = 3000
 
 local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 6)
+uiCorner.CornerRadius = UDim.new(0, 8)
 uiCorner.Parent = mainFrame
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 25)
+title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = colors.button
-title.Text = "Xefi Hub V4"
+title.Text = "Xefi Hub V5"
 title.TextColor3 = colors.text
-title.TextSize = 14
+title.TextSize = 16
 title.Font = Enum.Font.GothamBold
 title.Parent = mainFrame
-title.ZIndex = 2001
+title.ZIndex = 3001
 
-local seedInput = Instance.new("TextBox")
-seedInput.Size = UDim2.new(0.9, 0, 0, 25)
-seedInput.Position = UDim2.new(0.05, 0, 0, 35)
-seedInput.BackgroundColor3 = colors.button
-seedInput.Text = "Candy Blossom"
-seedInput.PlaceholderText = "Семя (Strawberry, Cranberry...)"
-seedInput.TextColor3 = colors.text
-seedInput.TextSize = 12
-seedInput.Font = Enum.Font.Gotham
-seedInput.Parent = mainFrame
-seedInput.ZIndex = 2001
+-- Выпадающий список растений
+local plants = {
+    "Apple", "Avocado", "Bamboo", "Carrot", "Potato", "Strawberry", "Pumpkin", "Tomato", "Corn",
+    "Coconut", "Cactus", "Pitaya", "Mango", "Grape", "Pepper", "Cocoa", "Cherry Blossom",
+    "Durian", "Cranberry", "Lotus", "Eggplant", "Venus Flytrap", "Candy Blossom",
+    "Lunar Mango", "Lunar Melon", "Hive Fruit", "Lumira"
+}
+local selectedPlant = "Candy Blossom"
+
+local dropdownFrame = Instance.new("Frame")
+dropdownFrame.Size = UDim2.new(0.9, 0, 0, 30)
+dropdownFrame.Position = UDim2.new(0.05, 0, 0, 40)
+dropdownFrame.BackgroundColor3 = colors.button
+dropdownFrame.Parent = mainFrame
+dropdownFrame.ZIndex = 3001
+
+local dropdownButton = Instance.new("TextButton")
+dropdownButton.Size = UDim2.new(1, 0, 1, 0)
+dropdownButton.BackgroundTransparency = 1
+dropdownButton.Text = "Растение: " .. selectedPlant
+dropdownButton.TextColor3 = colors.text
+dropdownButton.TextSize = 12
+dropdownButton.Font = Enum.Font.Gotham
+dropdownButton.Parent = dropdownFrame
+dropdownButton.ZIndex = 3002
+createButtonEffect(dropdownButton)
+
+local dropdownList = Instance.new("Frame")
+dropdownList.Size = UDim2.new(1, 0, 0, 100)
+dropdownList.Position = UDim2.new(0, 0, 1, 5)
+dropdownList.BackgroundColor3 = colors.background
+dropdownList.BackgroundTransparency = 0.2
+dropdownList.Visible = false
+dropdownList.Parent = dropdownFrame
+dropdownList.ZIndex = 3003
+
+local dropdownListLayout = Instance.new("UIListLayout")
+dropdownListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+dropdownListLayout.Padding = UDim.new(0, 5)
+dropdownListLayout.Parent = dropdownList
+
+local dropdownListScroll = Instance.new("ScrollingFrame")
+dropdownListScroll.Size = UDim2.new(1, 0, 1, 0)
+dropdownListScroll.BackgroundTransparency = 1
+dropdownListScroll.ScrollBarThickness = 4
+dropdownListScroll.Parent = dropdownList
+dropdownListScroll.ZIndex = 3004
+dropdownListScroll.CanvasSize = UDim2.new(0, 0, 0, #plants * 30)
+
+for _, plant in ipairs(plants) do
+    local plantButton = Instance.new("TextButton")
+    plantButton.Size = UDim2.new(0.95, 0, 0, 25)
+    plantButton.BackgroundColor3 = colors.button
+    plantButton.Text = plant
+    plantButton.TextColor3 = colors.text
+    plantButton.TextSize = 12
+    plantButton.Font = Enum.Font.Gotham
+    plantButton.Parent = dropdownListScroll
+    plantButton.ZIndex = 3005
+    createButtonEffect(plantButton)
+    plantButton.MouseButton1Click:Connect(function()
+        selectedPlant = plant
+        dropdownButton.Text = "Растение: " .. plant
+        dropdownList.Visible = false
+        showNotification("Выбрано: " .. plant, colors.success)
+    end)
+end
+
+dropdownButton.MouseButton1Click:Connect(function()
+    dropdownList.Visible = not dropdownList.Visible
+    TweenService:Create(dropdownList, TweenInfo.new(0.2), {BackgroundTransparency = dropdownList.Visible and 0.2 or 1}):Play()
+end)
 
 local speedInput = Instance.new("TextBox")
-speedInput.Size = UDim2.new(0.9, 0, 0, 25)
-speedInput.Position = UDim2.new(0.05, 0, 0, 65)
+speedInput.Size = UDim2.new(0.9, 0, 0, 30)
+speedInput.Position = UDim2.new(0.05, 0, 0, 80)
 speedInput.BackgroundColor3 = colors.button
 speedInput.Text = "32"
 speedInput.PlaceholderText = "Скорость (16-100)"
@@ -157,35 +219,40 @@ speedInput.TextColor3 = colors.text
 speedInput.TextSize = 12
 speedInput.Font = Enum.Font.Gotham
 speedInput.Parent = mainFrame
-speedInput.ZIndex = 2001
+speedInput.ZIndex = 3001
 
 local speedButton = Instance.new("TextButton")
-speedButton.Size = UDim2.new(0.9, 0, 0, 25)
-speedButton.Position = UDim2.new(0.05, 0, 0, 95)
+speedButton.Size = UDim2.new(0.9, 0, 0, 30)
+speedButton.Position = UDim2.new(0.05, 0, 0, 120)
 speedButton.BackgroundColor3 = colors.button
 speedButton.Text = "Установить скорость"
 speedButton.TextColor3 = colors.text
 speedButton.TextSize = 12
 speedButton.Font = Enum.Font.Gotham
 speedButton.Parent = mainFrame
-speedButton.ZIndex = 2001
+speedButton.ZIndex = 3001
 createButtonEffect(speedButton)
 
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 30, 0, 30)
+toggleButton.Size = UDim2.new(0, 40, 0, 40)
 toggleButton.Position = UDim2.new(0.05, 0, 0.05, 0)
 toggleButton.BackgroundColor3 = colors.buttonOn
 toggleButton.Text = "☰"
 toggleButton.TextColor3 = colors.text
-toggleButton.TextSize = 16
+toggleButton.TextSize = 20
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.Parent = gui
-toggleButton.ZIndex = 2002
+toggleButton.ZIndex = 3002
 createButtonEffect(toggleButton)
 makeDraggable(toggleButton)
 
 toggleButton.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    TweenService:Create(mainFrame, tweenInfo, {
+        Size = mainFrame.Visible and UDim2.new(0, 200, 0, 250) or UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = mainFrame.Visible and 0.2 or 1
+    }):Play()
     showNotification("Меню " .. (mainFrame.Visible and "открыто" or "закрыто"), colors.success)
 end)
 
@@ -205,6 +272,7 @@ local function teleportTo(position)
     local hrp = getHumanoidRootPart()
     if hrp then
         hrp.CFrame = position
+        task.wait(0.1)
     else
         showNotification("Ошибка: Персонаж не найден", colors.error)
     end
@@ -241,13 +309,21 @@ end
 
 local function autoBuy()
     local purchaseRemote = findRemote({"Purchase", "Buy", "BuySeed"})
-    if not purchaseRemote then
-        showNotification("Ошибка: RemoteEvent для покупки не найден", colors.error)
-        return
-    end
     while autoBuyEnabled do
         local success, err = pcall(function()
-            purchaseRemote:FireServer(seedInput.Text)
+            if purchaseRemote then
+                purchaseRemote:FireServer(selectedPlant)
+            else
+                local shopGui = playerGui:FindFirstChild("Shop") or playerGui:WaitForChild("Shop", 5)
+                if shopGui then
+                    local seedButton = shopGui:FindFirstChild(selectedPlant, true)
+                    if seedButton then
+                        fireclickdetector(seedButton:FindFirstChildOfClass("ClickDetector") or seedButton)
+                    else
+                        showNotification("Ошибка: Кнопка для " .. selectedPlant .. " не найдена", colors.error)
+                    end
+                end
+            end
         end)
         if not success then
             showNotification("Auto Buy ошибка: " .. tostring(err), colors.error)
@@ -262,21 +338,21 @@ end
 
 local function autoPlant()
     local plantRemote = findRemote({"Plant", "PlantSeed", "Grow"})
-    if not plantRemote then
-        showNotification("Ошибка: RemoteEvent для посадки не найден", colors.error)
-        return
-    end
     while autoPlantEnabled do
         local success, err = pcall(function()
             local farm = getOwnedFarm()
             if not farm then error("Ферма не найдена") end
             for _, plot in ipairs(farm:GetChildren()) do
                 if plot:IsA("Model") and plot:FindFirstChild("Plant") and not plot.Plant:FindFirstChild("Growth") then
-                    local hrp = getHumanoidRootPart()
-                    if hrp and (hrp.Position - plot.Plant.Position).Magnitude < 10 then
-                        plantRemote:FireServer(plot, seedInput.Text)
-                        task.wait(0.1)
+                    teleportTo(plot.Plant.Position + Vector3.new(0, 5, 0))
+                    if plantRemote then
+                        plantRemote:FireServer(plot, selectedPlant)
+                    else
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                        task.wait(0.05)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
                     end
+                    task.wait(0.2)
                 end
             end
         end)
@@ -303,7 +379,7 @@ local function autoHarvest()
                         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
                         task.wait(0.05)
                         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                        task.wait(0.15)
+                        task.wait(0.2)
                         if not autoHarvestEnabled or not plot.Parent then break end
                     end
                 end
@@ -329,9 +405,12 @@ local function autoSell()
             if sellRemote then
                 sellRemote:FireServer()
             else
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                task.wait(0.05)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                for i = 1, 5 do
+                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+                    task.wait(0.05)
+                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+                    task.wait(0.2)
+                end
             end
         end)
         if not success then
@@ -374,7 +453,7 @@ local buttons = {}
 local function createButton(name, text, posY, func)
     local button = Instance.new("TextButton")
     button.Name = name
-    button.Size = UDim2.new(0.9, 0, 0, 25)
+    button.Size = UDim2.new(0.9, 0, 0, 30)
     button.Position = UDim2.new(0.05, 0, 0, posY)
     button.BackgroundColor3 = colors.button
     button.Text = text .. ": OFF"
@@ -382,7 +461,7 @@ local function createButton(name, text, posY, func)
     button.TextSize = 12
     button.Font = Enum.Font.Gotham
     button.Parent = mainFrame
-    button.ZIndex = 2001
+    button.ZIndex = 3001
     createButtonEffect(button)
     button.MouseButton1Click:Connect(function()
         _G[name .. "Enabled"] = not _G[name .. "Enabled"]
@@ -396,11 +475,11 @@ local function createButton(name, text, posY, func)
     buttons[name] = button
 end
 
-createButton("AutoBuy", "Auto Buy", 125, autoBuy)
-createButton("AutoPlant", "Auto Plant", 155, autoPlant)
-createButton("AutoHarvest", "Auto Harvest", 185, autoHarvest)
-createButton("AutoSell", "Auto Sell", 215, autoSell)
+createButton("AutoBuy", "Auto Buy", 160, autoBuy)
+createButton("AutoPlant", "Auto Plant", 195, autoPlant)
+createButton("AutoHarvest", "Auto Harvest", 230, autoHarvest)
+createButton("AutoSell", "Auto Sell", 265, autoSell)
 
 speedButton.MouseButton1Click:Connect(setSpeed)
 
-showNotification("Xefi Hub V4 загружен", colors.success)
+showNotification("Xefi Hub V5 загружен", colors.success)
