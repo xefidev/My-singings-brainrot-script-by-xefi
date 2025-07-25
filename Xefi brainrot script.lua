@@ -1,485 +1,438 @@
--- XefiHubBrainrotV5 для Grow a Garden (PlaceId: 126884695634066)
--- Функции: Auto Buy, Auto Plant, Auto Harvest, Auto Sell, Speed
--- Красивое меню с анимацией и выпадающим списком растений
--- Безопасный код, без фризов, огород не пропадает
--- Discord: sahadowgame0.0
-
--- Сервисы
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Workspace = game:GetService("Workspace")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local VirtualUser = game:GetService("VirtualUser")
-
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local playerGui = player:WaitForChild("PlayerGui", 10)
 
-if not character or not playerGui then
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "Ошибка",
-        Text = "Персонаж или интерфейс не найдены",
-        Duration = 5
-    })
+-- Проверка PlayerGui
+print("🔍 Проверка интерфейса игрока...")
+local playerGui = player:WaitForChild("PlayerGui", 30)
+if not playerGui then
+    warn("🚫 Ошибка: PlayerGui недоступен")
     return
 end
+print("✅ PlayerGui найден")
 
--- Цвета
-local colors = {
-    background = Color3.fromRGB(30, 30, 35),
-    button = Color3.fromRGB(50, 50, 60),
-    buttonOn = Color3.fromRGB(0, 200, 0),
-    text = Color3.fromRGB(255, 255, 255),
-    error = Color3.fromRGB(200, 0, 0),
-    success = Color3.fromRGB(0, 200, 0)
-}
+-- Создание ScreenGui
+print("🛠️ Создание интерфейса...")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BrainrotHubUltra"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+print("✅ Интерфейс создан")
 
--- Уведомления
-local function showNotification(text, color)
-    local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(0, 200, 0, 40)
-    notification.Position = UDim2.new(0.5, 0, 0.95, 0)
-    notification.AnchorPoint = Vector2.new(0.5, 0.5)
-    notification.BackgroundColor3 = colors.background
-    notification.BackgroundTransparency = 0.3
-    notification.Parent = game:GetService("CoreGui")
-    notification.ZIndex = 3000
+-- Кнопка открытия меню (перемещаемая)
+print("🔧 Настройка кнопки меню...")
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 70, 0, 70)
+toggleButton.Position = UDim2.new(0.95, -70, 0.05, 0)
+toggleButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Темно-серый фон
+toggleButton.Text = "🧠 Меню"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- Белый текст
+toggleButton.Font = Enum.Font.Legacy -- Дефолтный шрифт Roblox
+toggleButton.TextSize = 20
+toggleButton.TextStrokeTransparency = 1 -- Без обводки
+toggleButton.Active = true
+toggleButton.Draggable = true
+toggleButton.Parent = screenGui
+local uiCornerToggle = Instance.new("UICorner")
+uiCornerToggle.CornerRadius = UDim.new(0.3, 0)
+uiCornerToggle.Parent = toggleButton
 
-    local uiCorner = Instance.new("UICorner")
-    uiCorner.CornerRadius = UDim.new(0, 6)
-    uiCorner.Parent = notification
+-- Кнопка для принудительного ESP (перемещаемая)
+local forceEspButton = Instance.new("TextButton")
+forceEspButton.Name = "ForceEspButton"
+forceEspButton.Size = UDim2.new(0, 70, 0, 70)
+forceEspButton.Position = UDim2.new(0.95, -70, 0.15, 0)
+forceEspButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+forceEspButton.Text = "👁️ ESP"
+forceEspButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+forceEspButton.Font = Enum.Font.Legacy
+forceEspButton.TextSize = 20
+forceEspButton.TextStrokeTransparency = 1
+forceEspButton.Active = true
+forceEspButton.Draggable = true
+forceEspButton.Parent = screenGui
+local uiCornerForceEsp = Instance.new("UICorner")
+uiCornerForceEsp.CornerRadius = UDim.new(0.3, 0)
+uiCornerForceEsp.Parent = forceEspButton
 
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(0.9, 0, 0.8, 0)
-    textLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = text
-    textLabel.TextColor3 = color or colors.text
-    textLabel.TextSize = 12
-    textLabel.Font = Enum.Font.Gotham
-    textLabel.TextWrapped = true
-    textLabel.Parent = notification
-    textLabel.ZIndex = 3001
+-- Основное окно меню
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 160, 0, 160) -- Увеличено для двух спидхаков
+mainFrame.Position = UDim2.new(0.5, -80, 0.5, -80)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Темный фон
+mainFrame.BackgroundTransparency = 0.2 -- Легкая прозрачность
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+local uiCornerMain = Instance.new("UICorner")
+uiCornerMain.CornerRadius = UDim.new(0.15, 0)
+uiCornerMain.Parent = mainFrame
+print("✅ Меню создано")
 
-    TweenService:Create(notification, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
-    task.wait(2)
-    TweenService:Create(notification, TweenInfo.new(0.3), {BackgroundTransparency = 1}):Play()
-    TweenService:Create(textLabel, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
-    task.wait(0.3)
-    notification:Destroy()
+-- Анимация открытия меню (сохранена)
+local function animateMenu(show)
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local goal = show and {
+        Size = UDim2.new(0, 320, 0, 320)
+    } or {
+        Size = UDim2.new(0, 160, 0, 160)
+    }
+    local tween = TweenService:Create(mainFrame, tweenInfo, goal)
+    tween:Play()
 end
 
--- Эффект кнопок
-local function createButtonEffect(button)
-    local originalColor = button.BackgroundColor3
+-- Панель вкладок
+local tabButtons = Instance.new("Frame")
+tabButtons.Name = "TabButtons"
+tabButtons.Size = UDim2.new(1, 0, 0, 30)
+tabButtons.BackgroundTransparency = 1
+tabButtons.Parent = mainFrame
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.FillDirection = Enum.FillDirection.Horizontal
+uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+uiListLayout.Parent = tabButtons
+
+-- Создание вкладок
+local tabs = {"Функции", "Серверы"}
+local tabFrames = {}
+local currentTab = "Функции"
+for i, tabName in ipairs(tabs) do
+    local button = Instance.new("TextButton")
+    button.Name = tabName .. "Button"
+    button.Size = UDim2.new(0, 90, 0, 25)
+    button.Text = tabName
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.Legacy
+    button.TextSize = 20
+    button.TextStrokeTransparency = 1
+    button.Parent = tabButtons
+    local uiCornerBtn = Instance.new("UICorner")
+    uiCornerBtn.CornerRadius = UDim.new(0.2, 0)
+    uiCornerBtn.Parent = button
+    button.MouseButton1Click:Connect(function()
+        currentTab = tabName
+        for _, frame in pairs(tabFrames) do
+            frame.Visible = false
+        end
+        tabFrames[tabName].Visible = true
+        print("🔄 Вкладка: " .. tabName)
+    end)
+
+    local frame = Instance.new("Frame")
+    frame.Name = tabName .. "Frame"
+    frame.Size = UDim2.new(1, 0, 1, -30)
+    frame.Position = UDim2.new(0, 0, 0, 30)
+    frame.BackgroundTransparency = 1
+    frame.Visible = (tabName == "Функции")
+    frame.Parent = mainFrame
+    tabFrames[tabName] = frame
+end
+
+-- Вспомогательные функции
+local function createToggle(name, yPos, parent, callback)
+    print("🛠️ Создание переключателя: " .. name)
+    local toggle = Instance.new("TextButton")
+    toggle.Name = name .. "Toggle"
+    toggle.Size = UDim2.new(0, 140, 0, 35)
+    toggle.Position = UDim2.new(0, 10, 0, yPos)
+    toggle.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    toggle.Text = name
+    toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggle.Font = Enum.Font.Legacy
+    toggle.TextSize = 20
+    toggle.TextStrokeTransparency = 1
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0.2, 0)
+    uiCorner.Parent = toggle
+    toggle.Parent = parent
+    local state = false
+    toggle.MouseEnter:Connect(function()
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(toggle, tweenInfo, {BackgroundColor3 = Color3.fromRGB(100, 100, 100), Size = UDim2.new(0, 145, 0, 37)})
+        tween:Play()
+    end)
+    toggle.MouseLeave:Connect(function()
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(toggle, tweenInfo, {BackgroundColor3 = state and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60), Size = UDim2.new(0, 140, 0, 35)})
+        tween:Play()
+    end)
+    toggle.MouseButton1Click:Connect(function()
+        state = not state
+        toggle.Text = name .. (state and " ✅" or " ❌")
+        toggle.BackgroundColor3 = state and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+        callback(state)
+        print(name .. ": " .. (state and "ВКЛ" or "ВЫКЛ"))
+    end)
+    return toggle
+end
+
+local function createButton(name, yPos, parent, callback)
+    print("🛠️ Создание кнопки: " .. name)
+    local button = Instance.new("TextButton")
+    button.Name = name .. "Button"
+    button.Size = UDim2.new(0, 140, 0, 35)
+    button.Position = UDim2.new(0, 10, 0, yPos)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    button.Text = name
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.Legacy
+    button.TextSize = 20
+    button.TextStrokeTransparency = 1
+    local uiCorner = Instance.new("UICorner")
+    uiCorner.CornerRadius = UDim.new(0.2, 0)
+    uiCorner.Parent = button
+    button.Parent = parent
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 80)}):Play()
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(button, tweenInfo, {BackgroundColor3 = Color3.fromRGB(100, 100, 100), Size = UDim2.new(0, 145, 0, 37)})
+        tween:Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = originalColor}):Play()
+        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(button, tweenInfo, {BackgroundColor3 = Color3.fromRGB(60, 60, 60), Size = UDim2.new(0, 140, 0, 35)})
+        tween:Play()
+    end)
+    button.MouseButton1Click:Connect(function()
+        callback()
+        print("🚀 " .. name .. " активировано")
+    end)
+    return button
+end
+
+-- Легальный спидхак через покупку и активацию предмета
+local speedSpringId = 123456 -- Замените на реальный ID предмета
+local speedSpringActive = false
+local function buySpeedSpring()
+    pcall(function()
+        ReplicatedStorage.BuyItem:FireServer(speedSpringId)
     end)
 end
 
--- Перетаскивание
-local function makeDraggable(frame)
-    local dragging, dragStart, startPos
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
+local function useSpeedSpring()
+    local backpack = player.Backpack
+    local speedSpring = backpack:FindFirstChild("SpeedSpring") -- Замените на реальное название
+    if speedSpring then
+        speedSpring:Activate()
+        print("🏃 SpeedSpring активирован")
+    else
+        warn("🚫 SpeedSpring не найден в рюкзаке")
+    end
+end
+
+local function toggleSpeedSpring(state)
+    speedSpringActive = state
+    if state then
+        spawn(function()
+            while speedSpringActive do
+                buySpeedSpring()
+                wait(1)
+                useSpeedSpring()
+                wait(5) -- Периодическая активация
+            end
+        end)
+        print("🏃 Спидхак (Spring) ВКЛ")
+    else
+        print("🏃 Спидхак (Spring) ВЫКЛ")
+    end
+end
+
+-- Обычный спидхак через WalkSpeed
+local walkSpeedActive = false
+local originalWalkSpeed = 16 -- Стандартная скорость Roblox
+local customWalkSpeed = 50 -- Настраиваемая скорость
+local function toggleWalkSpeed(state)
+    walkSpeedActive = state
+    if state then
+        spawn(function()
+            while walkSpeedActive do
+                if player.Character and player.Character:FindFirstChild("Humanoid") then
+                    player.Character.Humanoid.WalkSpeed = customWalkSpeed
                 end
-            end)
+                wait(0.1) -- Периодическая проверка
+            end
+        end)
+        print("🏃 Спидхак (WalkSpeed) ВКЛ")
+    else
+        if player.Character and player.Character:FindFirstChild("Humanoid") then
+            player.Character.Humanoid.WalkSpeed = originalWalkSpeed
         end
+        print("🏃 Спидхак (WalkSpeed) ВЫКЛ")
+    end
+end
+
+-- ESP
+local playerHighlights = {}
+local brainrotHighlights = {}
+local function enablePlayerESP(state)
+    if state then
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Character then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "ESP"
+                highlight.Adornee = p.Character
+                highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.Parent = p.Character
+                playerHighlights[p] = highlight
+            end
+        end
+        Players.PlayerAdded:Connect(function(p)
+            if p ~= player then
+                p.CharacterAdded:Connect(function(char)
+                    local highlight = Instance.new("Highlight")
+                    highlight.Name = "ESP"
+                    highlight.Adornee = char
+                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    highlight.Parent = char
+                    playerHighlights[p] = highlight
+                end)
+            end
+        end)
+    else
+        for _, highlight in pairs(playerHighlights) do
+            if highlight then highlight:Destroy() end
+        end
+        playerHighlights = {}
+    end
+end
+
+local function enableBrainrotESP(state)
+    if state then
+        for _, plot in pairs(workspace.Plots:GetChildren()) do
+            if plot ~= player.Plot then
+                local animalPodiums = plot:FindFirstChild("AnimalPodiums")
+                if animalPodiums then
+                    for _, podium in pairs(animalPodiums:GetChildren()) do
+                        local brainrot = podium:FindFirstChild("Brainrot")
+                        if brainrot and (string.find(brainrot.Name, "Rare") or string.find(brainrot.Name, "Epic")) then
+                            local highlight = Instance.new("Highlight")
+                            highlight.Name = "ESP"
+                            highlight.Adornee = brainrot
+                            highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.Parent = brainrot
+                            table.insert(brainrotHighlights, highlight)
+                        end
+                    end
+                end
+            end
+        end
+        workspace.Plots.ChildAdded:Connect(function(plot)
+            if plot ~= player.Plot then
+                local animalPodiums = plot:WaitForChild("AnimalPodiums", 5)
+                if animalPodiums then
+                    animalPodiums.ChildAdded:Connect(function(podium)
+                        local brainrot = podium:WaitForChild("Brainrot", 5)
+                        if brainrot and (string.find(brainrot.Name, "Rare") or string.find(brainrot.Name, "Epic")) then
+                            local highlight = Instance.new("Highlight")
+                            highlight.Name = "ESP"
+                            highlight.Adornee = brainrot
+                            highlight.FillColor = Color3.fromRGB(0, 255, 0)
+                            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            highlight.Parent = brainrot
+                            table.insert(brainrotHighlights, highlight)
+                        end
+                    end)
+                end
+            end
+        end)
+    else
+        for _, highlight in pairs(brainrotHighlights) do
+            if highlight then highlight:Destroy() end
+        end
+        brainrotHighlights = {}
+    end
+end
+
+-- Принудительное ESP
+local forceEspEnabled = false
+forceEspButton.MouseButton1Click:Connect(function()
+    forceEspEnabled = not forceEspEnabled
+    forceEspButton.Text = "👁️ ESP" .. (forceEspEnabled and " ✅" or " ❌")
+    forceEspButton.BackgroundColor3 = forceEspEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 40)
+    if forceEspEnabled then
+        enablePlayerESP(true)
+        print("👁️ ESP ВКЛ")
+    else
+        enablePlayerESP(false)
+        print("👁️ ESP ВЫКЛ")
     end)
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+-- Серверные функции
+local function rejoinServer()
+    pcall(function()
+        print("🔄 Перезаход на сервер...")
+        TeleportService:Teleport(game.PlaceId, player)
+        wait(5)
+    end)
+end
+
+local function serverHop()
+    pcall(function()
+        print("🔄 Переход на другой сервер...")
+        local success, servers = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+        end)
+        if success and servers and servers.data and #servers.data > 0 then
+            local randomServer = servers.data[math.random(1, #servers.data)]
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, randomServer.id, player)
+        else
+            print("🚫 Серверы не найдены")
         end
     end)
 end
 
--- UI
-local gui = Instance.new("ScreenGui")
-gui.Name = "XefiHubV5"
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.ResetOnSpawn = false
-gui.Parent = game:GetService("CoreGui")
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 200, 0, 250)
-mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-mainFrame.BackgroundColor3 = colors.background
-mainFrame.BackgroundTransparency = 0.2
-mainFrame.Visible = false
-mainFrame.Parent = gui
-mainFrame.ZIndex = 3000
-
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 8)
-uiCorner.Parent = mainFrame
-
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = colors.button
-title.Text = "Xefi Hub V5"
-title.TextColor3 = colors.text
-title.TextSize = 16
-title.Font = Enum.Font.GothamBold
-title.Parent = mainFrame
-title.ZIndex = 3001
-
--- Выпадающий список растений
-local plants = {
-    "Apple", "Avocado", "Bamboo", "Carrot", "Potato", "Strawberry", "Pumpkin", "Tomato", "Corn",
-    "Coconut", "Cactus", "Pitaya", "Mango", "Grape", "Pepper", "Cocoa", "Cherry Blossom",
-    "Durian", "Cranberry", "Lotus", "Eggplant", "Venus Flytrap", "Candy Blossom",
-    "Lunar Mango", "Lunar Melon", "Hive Fruit", "Lumira"
-}
-local selectedPlant = "Candy Blossom"
-
-local dropdownFrame = Instance.new("Frame")
-dropdownFrame.Size = UDim2.new(0.9, 0, 0, 30)
-dropdownFrame.Position = UDim2.new(0.05, 0, 0, 40)
-dropdownFrame.BackgroundColor3 = colors.button
-dropdownFrame.Parent = mainFrame
-dropdownFrame.ZIndex = 3001
-
-local dropdownButton = Instance.new("TextButton")
-dropdownButton.Size = UDim2.new(1, 0, 1, 0)
-dropdownButton.BackgroundTransparency = 1
-dropdownButton.Text = "Растение: " .. selectedPlant
-dropdownButton.TextColor3 = colors.text
-dropdownButton.TextSize = 12
-dropdownButton.Font = Enum.Font.Gotham
-dropdownButton.Parent = dropdownFrame
-dropdownButton.ZIndex = 3002
-createButtonEffect(dropdownButton)
-
-local dropdownList = Instance.new("Frame")
-dropdownList.Size = UDim2.new(1, 0, 0, 100)
-dropdownList.Position = UDim2.new(0, 0, 1, 5)
-dropdownList.BackgroundColor3 = colors.background
-dropdownList.BackgroundTransparency = 0.2
-dropdownList.Visible = false
-dropdownList.Parent = dropdownFrame
-dropdownList.ZIndex = 3003
-
-local dropdownListLayout = Instance.new("UIListLayout")
-dropdownListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-dropdownListLayout.Padding = UDim.new(0, 5)
-dropdownListLayout.Parent = dropdownList
-
-local dropdownListScroll = Instance.new("ScrollingFrame")
-dropdownListScroll.Size = UDim2.new(1, 0, 1, 0)
-dropdownListScroll.BackgroundTransparency = 1
-dropdownListScroll.ScrollBarThickness = 4
-dropdownListScroll.Parent = dropdownList
-dropdownListScroll.ZIndex = 3004
-dropdownListScroll.CanvasSize = UDim2.new(0, 0, 0, #plants * 30)
-
-for _, plant in ipairs(plants) do
-    local plantButton = Instance.new("TextButton")
-    plantButton.Size = UDim2.new(0.95, 0, 0, 25)
-    plantButton.BackgroundColor3 = colors.button
-    plantButton.Text = plant
-    plantButton.TextColor3 = colors.text
-    plantButton.TextSize = 12
-    plantButton.Font = Enum.Font.Gotham
-    plantButton.Parent = dropdownListScroll
-    plantButton.ZIndex = 3005
-    createButtonEffect(plantButton)
-    plantButton.MouseButton1Click:Connect(function()
-        selectedPlant = plant
-        dropdownButton.Text = "Растение: " .. plant
-        dropdownList.Visible = false
-        showNotification("Выбрано: " .. plant, colors.success)
+local function smallServerHop()
+    pcall(function()
+        print("🔄 Поиск сервера с малым количеством игроков...")
+        local success, servers = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+        end)
+        if success and servers and servers.data then
+            local smallServer = nil
+            for _, server in pairs(servers.data) do
+                if server.playing < 5 then
+                    smallServer = server
+                    break
+                end
+            end
+            if smallServer then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, smallServer.id, player)
+            else
+                serverHop()
+                print("⚠️ Малый сервер не найден, переход на случайный")
+            end
+        else
+            print("🚫 Серверы не найдены")
+        end
     end)
 end
 
-dropdownButton.MouseButton1Click:Connect(function()
-    dropdownList.Visible = not dropdownList.Visible
-    TweenService:Create(dropdownList, TweenInfo.new(0.2), {BackgroundTransparency = dropdownList.Visible and 0.2 or 1}):Play()
-end)
+-- Добавление элементов в меню
+local functionsFrame = tabFrames["Функции"]
+local speedSpringToggle = createToggle("🏃 Спидхак (Spring)", 10, functionsFrame, toggleSpeedSpring)
+local walkSpeedToggle = createToggle("🏃 Спидхак (WalkSpeed)", 50, functionsFrame, toggleWalkSpeed)
+local playerESPToggle = createToggle("👁️ Игроки ESP", 90, functionsFrame, enablePlayerESP)
+local brainrotESPToggle = createToggle("🌟 Brainrot ESP", 130, functionsFrame, enableBrainrotESP)
 
-local speedInput = Instance.new("TextBox")
-speedInput.Size = UDim2.new(0.9, 0, 0, 30)
-speedInput.Position = UDim2.new(0.05, 0, 0, 80)
-speedInput.BackgroundColor3 = colors.button
-speedInput.Text = "32"
-speedInput.PlaceholderText = "Скорость (16-100)"
-speedInput.TextColor3 = colors.text
-speedInput.TextSize = 12
-speedInput.Font = Enum.Font.Gotham
-speedInput.Parent = mainFrame
-speedInput.ZIndex = 3001
+local serverFrame = tabFrames["Серверы"]
+local rejoinButton = createButton("🔄 Переподключение", 10, serverFrame, rejoinServer)
+local serverHopButton = createButton("🔄 Смена сервера", 50, serverFrame, serverHop)
+local smallServerHopButton = createButton("🔄 Малый сервер", 90, serverFrame, smallServerHop)
 
-local speedButton = Instance.new("TextButton")
-speedButton.Size = UDim2.new(0.9, 0, 0, 30)
-speedButton.Position = UDim2.new(0.05, 0, 0, 120)
-speedButton.BackgroundColor3 = colors.button
-speedButton.Text = "Установить скорость"
-speedButton.TextColor3 = colors.text
-speedButton.TextSize = 12
-speedButton.Font = Enum.Font.Gotham
-speedButton.Parent = mainFrame
-speedButton.ZIndex = 3001
-createButtonEffect(speedButton)
-
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 40, 0, 40)
-toggleButton.Position = UDim2.new(0.05, 0, 0.05, 0)
-toggleButton.BackgroundColor3 = colors.buttonOn
-toggleButton.Text = "☰"
-toggleButton.TextColor3 = colors.text
-toggleButton.TextSize = 20
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.Parent = gui
-toggleButton.ZIndex = 3002
-createButtonEffect(toggleButton)
-makeDraggable(toggleButton)
-
+-- Подключение кнопки открытия меню
 toggleButton.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
-    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-    TweenService:Create(mainFrame, tweenInfo, {
-        Size = mainFrame.Visible and UDim2.new(0, 200, 0, 250) or UDim2.new(0, 0, 0, 0),
-        BackgroundTransparency = mainFrame.Visible and 0.2 or 1
-    }):Play()
-    showNotification("Меню " .. (mainFrame.Visible and "открыто" or "закрыто"), colors.success)
+    animateMenu(mainFrame.Visible)
+    print("🧠 Меню: " .. (mainFrame.Visible and "Открыто" or "Закрыто"))
 end)
-
--- Логика игры
-local autoBuyEnabled = false
-local autoPlantEnabled = false
-local autoHarvestEnabled = false
-local autoSellEnabled = false
-local sellPos = CFrame.new(90.08035, 0.98381, 3.02662)
-
-local function getHumanoidRootPart()
-    local char = player.Character
-    return char and char:FindFirstChild("HumanoidRootPart")
-end
-
-local function teleportTo(position)
-    local hrp = getHumanoidRootPart()
-    if hrp then
-        hrp.CFrame = position
-        task.wait(0.1)
-    else
-        showNotification("Ошибка: Персонаж не найден", colors.error)
-    end
-end
-
-local function getOwnedFarm()
-    local farms = Workspace:WaitForChild("Farm", 5)
-    if not farms then
-        showNotification("Ошибка: Ферма не найдена", colors.error)
-        return
-    end
-    for _, farm in ipairs(farms:GetChildren()) do
-        if farm:FindFirstChild("Important") and farm.Important.Data.Owner.Value == player.Name then
-            return farm
-        end
-    end
-    showNotification("Ошибка: Ферма игрока не найдена", colors.error)
-end
-
-local function findRemote(namePatterns)
-    for _, obj in pairs({ReplicatedStorage, Workspace, Players}) do
-        for _, remote in ipairs(obj:GetDescendants()) do
-            if remote:IsA("RemoteEvent") then
-                for _, pattern in ipairs(namePatterns) do
-                    if remote.Name:lower():find(pattern:lower()) then
-                        return remote
-                    end
-                end
-            end
-        end
-    end
-    return nil
-end
-
-local function autoBuy()
-    local purchaseRemote = findRemote({"Purchase", "Buy", "BuySeed"})
-    while autoBuyEnabled do
-        local success, err = pcall(function()
-            if purchaseRemote then
-                purchaseRemote:FireServer(selectedPlant)
-            else
-                local shopGui = playerGui:FindFirstChild("Shop") or playerGui:WaitForChild("Shop", 5)
-                if shopGui then
-                    local seedButton = shopGui:FindFirstChild(selectedPlant, true)
-                    if seedButton then
-                        fireclickdetector(seedButton:FindFirstChildOfClass("ClickDetector") or seedButton)
-                    else
-                        showNotification("Ошибка: Кнопка для " .. selectedPlant .. " не найдена", colors.error)
-                    end
-                end
-            end
-        end)
-        if not success then
-            showNotification("Auto Buy ошибка: " .. tostring(err), colors.error)
-            autoBuyEnabled = false
-            buttons.AutoBuy.Text = "Auto Buy: OFF"
-            buttons.AutoBuy.BackgroundColor3 = colors.button
-            return
-        end
-        task.wait(1)
-    end
-end
-
-local function autoPlant()
-    local plantRemote = findRemote({"Plant", "PlantSeed", "Grow"})
-    while autoPlantEnabled do
-        local success, err = pcall(function()
-            local farm = getOwnedFarm()
-            if not farm then error("Ферма не найдена") end
-            for _, plot in ipairs(farm:GetChildren()) do
-                if plot:IsA("Model") and plot:FindFirstChild("Plant") and not plot.Plant:FindFirstChild("Growth") then
-                    teleportTo(plot.Plant.Position + Vector3.new(0, 5, 0))
-                    if plantRemote then
-                        plantRemote:FireServer(plot, selectedPlant)
-                    else
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                        task.wait(0.05)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    end
-                    task.wait(0.2)
-                end
-            end
-        end)
-        if not success then
-            showNotification("Auto Plant ошибка: " .. tostring(err), colors.error)
-            autoPlantEnabled = false
-            buttons.AutoPlant.Text = "Auto Plant: OFF"
-            buttons.AutoPlant.BackgroundColor3 = colors.button
-            return
-        end
-        task.wait(0.5)
-    end
-end
-
-local function autoHarvest()
-    while autoHarvestEnabled do
-        local success, err = pcall(function()
-            local farm = getOwnedFarm()
-            if not farm then error("Ферма не найдена") end
-            for _, plot in ipairs(farm:GetChildren()) do
-                if plot:IsA("Model") and plot:FindFirstChild("Plant") and plot.Plant:FindFirstChild("Growth") and plot.Plant.Growth.Value >= 100 then
-                    teleportTo(plot.Plant.Position + Vector3.new(0, 5, 0))
-                    for i = 1, 5 do
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                        task.wait(0.05)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                        task.wait(0.2)
-                        if not autoHarvestEnabled or not plot.Parent then break end
-                    end
-                end
-            end
-        end)
-        if not success then
-            showNotification("Auto Harvest ошибка: " .. tostring(err), colors.error)
-            autoHarvestEnabled = false
-            buttons.AutoHarvest.Text = "Auto Harvest: OFF"
-            buttons.AutoHarvest.BackgroundColor3 = colors.button
-            return
-        end
-        task.wait(0.3)
-    end
-end
-
-local function autoSell()
-    local sellRemote = findRemote({"Sell", "SellCrops", "Sell_Inventory"})
-    while autoSellEnabled do
-        local success, err = pcall(function()
-            teleportTo(sellPos)
-            task.wait(0.1)
-            if sellRemote then
-                sellRemote:FireServer()
-            else
-                for i = 1, 5 do
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-                    task.wait(0.05)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-                    task.wait(0.2)
-                end
-            end
-        end)
-        if not success then
-            showNotification("Auto Sell ошибка: " .. tostring(err), colors.error)
-            autoSellEnabled = false
-            buttons.AutoSell.Text = "Auto Sell: OFF"
-            buttons.AutoSell.BackgroundColor3 = colors.button
-            return
-        end
-        task.wait(1)
-    end
-end
-
-local function setSpeed()
-    local speed = tonumber(speedInput.Text)
-    if not speed or speed < 16 or speed > 100 then
-        showNotification("Скорость должна быть 16-100", colors.error)
-        return
-    end
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.WalkSpeed = speed
-        showNotification("Скорость установлена: " .. speed, colors.success)
-    else
-        showNotification("Ошибка: Персонаж не найден", colors.error)
-    end
-end
-
--- Anti-AFK
-task.spawn(function()
-    while true do
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-        task.wait(60)
-    end
-end)
-
--- Кнопки
-local buttons = {}
-local function createButton(name, text, posY, func)
-    local button = Instance.new("TextButton")
-    button.Name = name
-    button.Size = UDim2.new(0.9, 0, 0, 30)
-    button.Position = UDim2.new(0.05, 0, 0, posY)
-    button.BackgroundColor3 = colors.button
-    button.Text = text .. ": OFF"
-    button.TextColor3 = colors.text
-    button.TextSize = 12
-    button.Font = Enum.Font.Gotham
-    button.Parent = mainFrame
-    button.ZIndex = 3001
-    createButtonEffect(button)
-    button.MouseButton1Click:Connect(function()
-        _G[name .. "Enabled"] = not _G[name .. "Enabled"]
-        button.Text = text .. ": " .. (_G[name .. "Enabled"] and "ON" or "OFF")
-        button.BackgroundColor3 = _G[name .. "Enabled"] and colors.buttonOn or colors.button
-        showNotification(text .. ": " .. (_G[name .. "Enabled"] and "Включено" or "Выключено"), colors.success)
-        if _G[name .. "Enabled"] then
-            task.spawn(func)
-        end
-    end)
-    buttons[name] = button
-end
-
-createButton("AutoBuy", "Auto Buy", 160, autoBuy)
-createButton("AutoPlant", "Auto Plant", 195, autoPlant)
-createButton("AutoHarvest", "Auto Harvest", 230, autoHarvest)
-createButton("AutoSell", "Auto Sell", 265, autoSell)
-
-speedButton.MouseButton1Click:Connect(setSpeed)
-
-showNotification("Xefi Hub V5 загружен", colors.success)
